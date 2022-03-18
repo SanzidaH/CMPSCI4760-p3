@@ -1,15 +1,15 @@
 /**
 * @Author: Sanzida Hoque
 * @Course: CMP_SCI 4760 Operating Systems 
-*
+* @Sources: https://www.prodevelopertutorial.com/system-v-semaphores-in-c-using-semget-semctl-semop-system-v-system-calls-in-linux/
 */
 
 #include "config.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     printf("slave is processessing...\n");
- 
+    signal(SIGALRM, signal_handler);//Abort for end of termination time 
+    signal(SIGINT, signal_handler);// Abort for Ctrl+C 
     /* Parsing Command Line argument */  
     int procid = atoi(argv[1]); 
     int nprocs = atoi(argv[2]); 
@@ -34,8 +34,9 @@ int main(int argc, char *argv[])
     char buf[LEN];
     int random_t = 0;
 
-   /* Grab semophore */
+   /* Grabbing semophore */
     sem_grab();
+    
     for ( i = 0; i < 5; i++){
         srand(time(NULL) + procid + i); // seed for random sleep time
         /* acquire the semaphore */
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
    	loc_time = localtime (&curtime);// Converting current time to local time
         fprintf(logfile, "Process id %d writes on shared resource, cstest %s\n", procid, asctime (loc_time));
         strftime (buf, LEN, "%H:%M:%S", loc_time);// formatting time
-        fprintf(cstest, "%s Queue %d File modified by process number %d\n", buf, i , procid);
+        fprintf(cstest, "%s Queue %d File modified by process number %d\n", buf, i+1 , procid);
        
 	/* wait for a random number of seconds after writing */
         random_t = (rand() % 5) + 1; // random numbers in range [1, 5]
@@ -68,13 +69,12 @@ int main(int argc, char *argv[])
         fprintf(logfile, "Process id: %d exits critical section %s\n", procid, asctime (loc_time));
        
        /* closing files */
-        fclose(logfile);
-        fclose(cstest);
+          fclose(logfile);
+          fclose(cstest);
        
         //TODO add code for release semaphore
         sem_signal();
     }
-
     exit(EXIT_SUCCESS);
 }
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 void sem_wait(){
     struct sembuf sb = {0, -1, 0}; //allocate resource
     if (semop(semid, &sb, 1) == -1) {
-        perror("semop");
+        perror("slave: semop failed");
         exit(EXIT_FAILURE); 
     }
 }
@@ -90,7 +90,7 @@ void sem_wait(){
 void sem_signal(){
     struct sembuf sb = {0, 1, 0}; //free resource
     if (semop(semid, &sb, 1) == -1) {
-        perror("semop");
+        perror("slave: semop failed");
         exit(EXIT_FAILURE); 
     }
 }
@@ -111,10 +111,7 @@ void sem_grab(){
 
 void sem_remove(){
    
-   /* file closes */
-     fclose(logfile);
-   
-    /* grabing semaphore set created by sem_init(): */ 
+    /* grabing semaphore set created by sem_init() in master */ 
     if ((semid = semget(key, 1, 0)) == -1){
         perror("slave: sem_remove(): semget failed");
         exit(EXIT_FAILURE); 
@@ -127,4 +124,11 @@ void sem_remove(){
     }
 
 }
+
+
+void signal_handler(){
+
+	exit(EXIT_SUCCESS);
+}
+
 

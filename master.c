@@ -11,12 +11,12 @@
 int opt, nprocs = 20, terminate_time = 100, errno, pid = 0,  *parents = NULL, *children = NULL;
 time_t startTime = 0;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
+
     printf("master is processessing...\n");
     /* Interrupt signal handling */
-    //signal(SIGALRM, signal_timer);//Abort for end of termination time 
-    //signal(SIGINT, signal_abort);// Abort for Ctrl+C     
+    signal(SIGALRM, signal_timer);//Abort for end of termination time 
+    signal(SIGINT, signal_abort);// Abort for Ctrl+C     
   
     /* Parsing Command Line argument */
     while ((opt = getopt(argc, argv, "t:n:h:")) != -1) {
@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "nprocs: %d\n", nprocs);
     parents = malloc(sizeof(int) * nprocs);
     children = malloc(sizeof(int) * nprocs); 
+    
 
     /* initialization of shared resource for critical section */
     cstest_id = shmget(ftok("Makefile", '5'), sizeof(FILE) * nprocs, IPC_CREAT | 0666);
@@ -71,14 +72,10 @@ int main(int argc, char *argv[])
     if (cstest == (void *) -1 ) {
        perror("master: Error: Shared memory attachment failed");
    }
-    /* Logfile for master */
-    masterfile = fopen("logfile.master", "a");
-    if (masterfile == NULL){
-        perror("master: Error: file open failed");
-    }
+    
+
     curtime = time (NULL); //Getting current time of system  	
     loc_time = localtime (&curtime);// Converting current time to local time
-    fprintf(masterfile, "master: Initializing Semaphore > %s\n", asctime (loc_time));
     fprintf(stderr, "master: Initializing Semaphore > %s\n", asctime (loc_time));     
     sem_init(); // check  from cmd :  ipcs -s
     
@@ -123,8 +120,8 @@ int main(int argc, char *argv[])
    
     curtime = time (NULL); //Getting current time of system  	
     loc_time = localtime (&curtime);// Converting current time to local time
-    fprintf(masterfile, "master: Removing Semaphore > %s\n", asctime (loc_time));
-    fprintf(stderr, "master: Removing Semaphore > %s\n", asctime (loc_time)); 
+    fprintf(stderr, "master: master is terminating successfully > %s\n", asctime (loc_time));
+    
     sem_remove(); 
     shm_remove();
     exit(EXIT_SUCCESS);
@@ -133,22 +130,19 @@ int main(int argc, char *argv[])
 
 void sem_init(){
 
-    if ((key = ftok("Makefile", '4')) == -1) 
-    {   
+    if ((key = ftok("Makefile", '4')) == -1){   
         perror("master: sem_init(): ftok failed");
         exit(EXIT_FAILURE); 
     }
     
 /* create a semaphore set with 1 semaphore: */
-    if ((semid = semget(key, 1, 0666 | IPC_CREAT)) == -1) 
-    {
+    if ((semid = semget(key, 1, 0666 | IPC_CREAT)) == -1){
         perror("master: sem_init(): semget failed");
         exit(EXIT_FAILURE); 
     }
 /* initialize semaphore #0 to 1: */ 
     arg.val = 1;
-    if (semctl(semid, 0, SETVAL, arg) == -1) 
-    {
+    if (semctl(semid, 0, SETVAL, arg) == -1){
         perror("master: sem_init(): semctl failed");
         exit(EXIT_FAILURE); 
     }
@@ -156,26 +150,27 @@ void sem_init(){
 }
 
 void sem_remove(){
-   
-    fclose(logfile);
-    fclose(cstest);
+    
+    curtime = time (NULL); //Getting current time of system  	
+    loc_time = localtime (&curtime);// Converting current time to local time
+    fprintf(stderr, "master: Removing Semaphore > %s\n", asctime (loc_time)); 
     /* grab the semaphore set created by sem_init(): */ 
-    if ((semid = semget(key, 1, 0)) == -1) 
-    {
+    if ((semid = semget(key, 1, 0)) == -1) {
         perror("master: sem_remove(): semget failed");
         exit(EXIT_FAILURE); 
-    }
+    } 
     
-    /* remove it: */
-    if (semctl(semid, 0, IPC_RMID, arg) == -1) 
-    {
+    /* removing semaphore */
+    if (semctl(semid, 0, IPC_RMID, arg) == -1) {
         perror("master: sem_remove(): semctl failed");
         exit(EXIT_FAILURE); 
     }
-    
+    curtime = time (NULL); //Getting current time of system  	
+    loc_time = localtime (&curtime);// Converting current time to local time
 }
 
 void shm_remove(){
+
   if (shmdt(cstest) == -1) {
       perror("master: Error: shmdt failed to detach memory");
   }
@@ -184,6 +179,40 @@ void shm_remove(){
   }  
 }
 
+/* signal handle for time out */
+void signal_timer(int signal){
+        curtime = time (NULL); //Getting current time of system  	
+        loc_time = localtime (&curtime);// Converting current time to local time
+	if(difftime(time(NULL),startTime) >= terminate_time){
+	   fprintf(stderr, "master: Warning: timer ends > %s\n", asctime (loc_time));
+	   killpg((*parents), SIGTERM);
+	   killpg((*children), SIGTERM);
+	    for(int i = 0; i < nprocs; i++){
+		wait(NULL);
+	    }
+	   sem_remove();
+	   shm_remove();
+	   //abort();
+	   exit(EXIT_SUCCESS);
+	}
+}
+
+
+/* signal handle for receiving CTRL + C */
+void signal_abort(){ 
+    curtime = time (NULL); //Getting current time of system  	
+    loc_time = localtime (&curtime);// Converting current time to local time
+    fprintf(stderr, "master: Warning: CTRL + C received, master is terminating > %s\n", asctime (loc_time));
+    killpg((*parents), SIGTERM);
+    killpg((*children), SIGTERM);
+    /*for(int i = 0; i < nprocs; i++){
+		wait(NULL);
+	    }*/
+    sem_remove();
+    shm_remove();
+    //abort();
+    exit(EXIT_SUCCESS);
+}
 
 
 

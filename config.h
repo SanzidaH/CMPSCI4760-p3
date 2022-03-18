@@ -48,18 +48,14 @@ struct tm *loc_time;
 
 
 /* shm variables */
-bool *choosing;
-int *tickets;
-int choose_id, ticket_id, cstest_id;
-FILE *cstest = NULL, *logfile = NULL, *masterfile = NULL;
+int cstest_id;
+FILE *cstest = NULL, *logfile = NULL;
 
-/* functions */   
-void deallocate_shm();
-int find_maximum(int *, int);
 
 /* signalhandlers */
 void signal_timer(int signal);
 void signal_abort();
+void signal_handler();
 
 /* iterators */
 int i, j, c; 
