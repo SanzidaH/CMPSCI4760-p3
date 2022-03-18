@@ -72,14 +72,13 @@ int main(int argc, char *argv[])
        perror("master: Error: Shared memory attachment failed");
    }
     /* Logfile for master */
-    sprintf(logfname, "logfile.master");
-    logfile = fopen(logfname, "w");
-    if (logfile == NULL){
+    masterfile = fopen("logfile.master", "a");
+    if (masterfile == NULL){
         perror("master: Error: file open failed");
     }
     curtime = time (NULL); //Getting current time of system  	
     loc_time = localtime (&curtime);// Converting current time to local time
-    fprintf(logfile, "master: Initializing Semaphore > %s\n", asctime (loc_time));
+    fprintf(masterfile, "master: Initializing Semaphore > %s\n", asctime (loc_time));
     fprintf(stderr, "master: Initializing Semaphore > %s\n", asctime (loc_time));     
     sem_init(); // check  from cmd :  ipcs -s
     
@@ -107,10 +106,10 @@ int main(int argc, char *argv[])
                    " parent pid %d, master set pid = %d\n",
                 getpid(), getppid(),i+1); 
             children[i] = pid; 
-            /*errno = execl("./slave", "./slave" , procid, numprocs, NULL); // Processing slaves
+            errno = execl("./slave", "./slave" , procid, numprocs, NULL); // Processing slaves
             if(errno == -1){
                 perror("master: Error: Can't process slave!");
-            }*/
+            }
             exit(EXIT_SUCCESS);
         }
         else{ // Parent processes
@@ -124,9 +123,10 @@ int main(int argc, char *argv[])
    
     curtime = time (NULL); //Getting current time of system  	
     loc_time = localtime (&curtime);// Converting current time to local time
-    fprintf(logfile, "master: Removing Semaphore > %s\n", asctime (loc_time));
+    fprintf(masterfile, "master: Removing Semaphore > %s\n", asctime (loc_time));
     fprintf(stderr, "master: Removing Semaphore > %s\n", asctime (loc_time)); 
     sem_remove(); 
+    shm_remove();
     exit(EXIT_SUCCESS);
 }
 
@@ -158,6 +158,7 @@ void sem_init(){
 void sem_remove(){
    
     fclose(logfile);
+    fclose(cstest);
     /* grab the semaphore set created by sem_init(): */ 
     if ((semid = semget(key, 1, 0)) == -1) 
     {
@@ -171,7 +172,36 @@ void sem_remove(){
         perror("master: sem_remove(): semctl failed");
         exit(EXIT_FAILURE); 
     }
-
+    
 }
+
+void shm_remove(){
+  if (shmdt(cstest) == -1) {
+      perror("master: Error: shmdt failed to detach memory");
+  }
+  if (shmctl(cstest_id, IPC_RMID, 0) == -1 ) {
+      perror("master: Error: shmctl failed to delete shared memory");
+  }  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -9,7 +9,7 @@ MASTER = master
 SLAVE = slave
 #SLAVE = test
  
-all: $(MASTER) #$(SLAVE)
+all: $(MASTER) $(SLAVE)
  
 #$(MASTER): $(MASTER).o
 #	$(CC) $(CFLAGS) $(MASTER).c -o $(MASTER)
@@ -21,5 +21,5 @@ all: $(MASTER) #$(SLAVE)
 .PHONY: all clean
 
 clean:
-	/bin/rm -f *.o $(MASTER) #$(SLAVE)
+	/bin/rm -f *.o $(MASTER) $(SLAVE)
 

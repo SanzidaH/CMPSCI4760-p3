@@ -21,7 +21,6 @@
 #define SHM_KEY 0x12345 //shared memory key
 #define LEN 150
 
-
 union semun {
     int val;                /* value for SETVAL */
     struct semid_ds *buf;   /* buffer for IPC_STAT & IPC_SET */
@@ -38,6 +37,10 @@ char logfname[256];
 /* functions */ 
 void sem_init();
 void sem_remove();
+void shm_remove();
+void sem_grab();
+void sem_wait();
+void sem_signal();
  
 /* variable for time */
 time_t curtime;
@@ -48,7 +51,7 @@ struct tm *loc_time;
 bool *choosing;
 int *tickets;
 int choose_id, ticket_id, cstest_id;
-FILE *cstest = NULL, *logfile = NULL, *masterfile;
+FILE *cstest = NULL, *logfile = NULL, *masterfile = NULL;
 
 /* functions */   
 void deallocate_shm();
